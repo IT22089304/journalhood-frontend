@@ -60,61 +60,70 @@ export default function SuperAdminAnalytics() {
   const router = useRouter();
 
   const analyzeEntries = async () => {
-    setAnalyzing(true);
-    setError(null);
-    setProgress(0);
-    setProgressMessage('Initializing unified journal analysis workflow...');
-    
-    // Show progress steps for the unified workflow
-    const unifiedProgressSteps = [
-      { percent: 10, message: 'Fetching ALL journals from diaryEntriesBackup collection...' },
-      { percent: 25, message: 'Generating analytics report (word counts, statistics)...' },
-      { percent: 45, message: `Analyzing mental health using ${analysisMethod === 'openai' ? 'OpenAI' : 'keyword matching'}...` },
-      { percent: 60, message: 'Detecting depression, bullying, introvert, and language issues...' },
-      { percent: 75, message: 'Flagging students with 4+ issue occurrences...' },
-      { percent: 85, message: 'Saving analytics report to analyzedData collection...' },
-      { percent: 92, message: 'Moving processed journals to analyzedjournals collection...' },
-      { percent: 98, message: 'Cleaning up processed journals from diaryEntriesBackup...' },
-    ];
-    
-    // Show unified workflow progress simulation
-    for (const step of unifiedProgressSteps) {
-      setProgress(step.percent);
-      setProgressMessage(step.message);
-      await new Promise(resolve => setTimeout(resolve, 1200));
-    }
-    
-    // Call the unified analysis endpoint
-    setProgressMessage('Running unified analysis workflow...');
-    const unifiedResponse = await analyticsApi.analyzeData(token!, analysisMethod);
-    
-    console.log('🔍 Unified Response:', unifiedResponse);
-    
-    // Check if the response has the expected structure
-    if (!unifiedResponse.data) {
-      console.error('❌ Invalid response structure:', unifiedResponse);
-      throw new Error('Analysis response has invalid structure. Please try again.');
-    }
-    
-    // Show detailed results from the unified workflow
-    const { 
-      analytics,
-      mentalHealth,
-      processing
-    } = unifiedResponse.data;
-    
-    const journalInfo = `${processing?.totalJournalsProcessed ?? 'N/A'} journals processed, ${processing?.journalsMovedToArchive ?? 'N/A'} moved to archive, ${processing?.journalsRemovedFromBackup ?? 'N/A'} removed from backup`;
-    
-    toast({
-      title: "Unified Analysis Complete",
-      description: `Analytics generated! ${analytics.totalEntries} entries (${analytics.totalWords} words), ${mentalHealth.flaggedStudents} students flagged for issues. ${journalInfo}.`,
-      variant: "default",
-    });
+    try {
+      setAnalyzing(true);
+      setError(null);
+      setProgress(0);
+      setProgressMessage('Initializing unified journal analysis workflow...');
 
-    // Refresh analytics data and flagged students
-    await loadAnalytics(false);
-    await loadFlaggedStudents();
-    await loadHistoricalData();
+      const unifiedProgressSteps = [
+        { percent: 10, message: 'Fetching ALL journals from diaryEntriesBackup collection...' },
+        { percent: 25, message: 'Generating analytics report (word counts, statistics)...' },
+        { percent: 45, message: `Analyzing mental health using ${analysisMethod === 'openai' ? 'OpenAI' : 'keyword matching'}...` },
+        { percent: 60, message: 'Detecting depression, bullying, introvert, and language issues...' },
+        { percent: 75, message: 'Flagging students with 4+ issue occurrences...' },
+        { percent: 85, message: 'Saving analytics report to analyzedData collection...' },
+        { percent: 92, message: 'Moving processed journals to analyzedjournals collection...' },
+        { percent: 98, message: 'Cleaning up processed journals from diaryEntriesBackup...' },
+      ];
+
+      for (const step of unifiedProgressSteps) {
+        setProgress(step.percent);
+        setProgressMessage(step.message);
+        await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+
+      setProgressMessage('Running unified analysis workflow...');
+      const unifiedResponse = await analyticsApi.analyzeData(token!, analysisMethod);
+      console.log('🔍 Unified Response:', unifiedResponse);
+
+      if (!unifiedResponse.data) {
+        console.error('❌ Invalid response structure:', unifiedResponse);
+        throw new Error('Analysis response has invalid structure. Please try again.');
+      }
+
+      const payload: any = unifiedResponse.data;
+      const analyticsData = payload?.analytics || payload;
+      const mentalHealth = payload?.mentalHealth || { flaggedStudents: 0 };
+      const processing = payload?.processing || {
+        totalJournalsProcessed: analyticsData?.totalEntries ?? 0,
+        journalsMovedToArchive: 0,
+        journalsRemovedFromBackup: 0,
+      };
+
+      const journalInfo = `${processing?.totalJournalsProcessed ?? 'N/A'} journals processed, ${processing?.journalsMovedToArchive ?? 'N/A'} moved to archive, ${processing?.journalsRemovedFromBackup ?? 'N/A'} removed from backup`;
+
+      setProgress(100);
+      setProgressMessage('Analysis finished');
+      toast({
+        title: 'Unified Analysis Complete',
+        description: `Analytics generated! ${analyticsData?.totalEntries ?? 0} entries (${analyticsData?.totalWords ?? 0} words), ${mentalHealth?.flaggedStudents ?? 0} students flagged for issues. ${journalInfo}.`,
+        variant: 'default',
+      });
+
+      await loadAnalytics(false);
+      await loadFlaggedStudents();
+      await loadHistoricalData();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to run analysis');
+      toast({
+        title: 'Analysis Failed',
+        description: err?.message || 'Failed to run analysis',
+        variant: 'destructive',
+      });
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const loadAnalytics = async (showLoading: boolean = true) => {

@@ -6,7 +6,7 @@ import { GraduationCap, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useEffect, useMemo, useState } from 'react';
-import { teacherApi } from '@/lib/api';
+import { teacherApi, teacherAnalyticsApi } from '@/lib/api';
 
 const navigation = [
   { title: "Students", url: "/dashboard/teacher/students", icon: GraduationCap },
@@ -33,8 +33,52 @@ export default function TeacherAnalytics() {
       try {
         setError(null);
         const resp = await teacherApi.getDashboardData(token);
+
+        // Update students immediately
         setStudents(resp.students || []);
-        setAnalytics(resp.analytics || {});
+
+        // Start with backend-provided analytics
+        let nextAnalytics: any = {
+          ...(resp.analytics || {})
+        };
+
+        // Derive/override key metrics using analyzed data if available
+        try {
+          const analyzed = await teacherAnalyticsApi.getTeacherAnalytics(token);
+          const studentStats = analyzed?.data?.studentStats || analyzed?.studentStats || {};
+
+          if (studentStats && typeof studentStats === 'object') {
+            const stats = Object.values(studentStats as Record<string, any>);
+
+            const totalStudentsFromList = resp.students?.length || nextAnalytics.totalStudents || 0;
+            const activeStudentsFromStats = stats.filter((s: any) => (s.totalEntries || 0) > 0).length;
+            const totalEntriesFromStats = stats.reduce((sum: number, s: any) => sum + (s.totalEntries || 0), 0);
+            const totalWordsFromStats = stats.reduce((sum: number, s: any) => sum + (s.totalWords || 0), 0);
+            const avgWordFromStats = totalEntriesFromStats > 0 ? Math.round(totalWordsFromStats / totalEntriesFromStats) : 0;
+
+            nextAnalytics = {
+              ...nextAnalytics,
+              totalStudents: totalStudentsFromList,
+              activeStudents: activeStudentsFromStats || nextAnalytics.activeStudents || 0,
+              totalEntries: totalEntriesFromStats || nextAnalytics.totalEntries || 0,
+              avgWordCount: avgWordFromStats || nextAnalytics.avgWordCount || 0,
+            };
+          }
+        } catch (e) {
+          // If analyzed data is unavailable, fall back to backend values silently
+        }
+
+        // Additional fallbacks using students list if needed
+        const fallbackActive = (resp.students || []).filter((s: any) => (s.journalEntries || 0) > 0).length;
+        const fallbackTotalEntries = (resp.students || []).reduce((sum: number, s: any) => sum + (s.journalEntries || 0), 0);
+        if (!nextAnalytics.activeStudents) nextAnalytics.activeStudents = fallbackActive;
+        if (!nextAnalytics.totalStudents) nextAnalytics.totalStudents = (resp.students || []).length;
+        if (!nextAnalytics.totalEntries) nextAnalytics.totalEntries = fallbackTotalEntries;
+        if (!nextAnalytics.avgWordCount && (nextAnalytics.weeklyAvgWords || nextAnalytics.monthlyAvgWords)) {
+          nextAnalytics.avgWordCount = Math.round((nextAnalytics.weeklyAvgWords || nextAnalytics.monthlyAvgWords) || 0);
+        }
+
+        setAnalytics(nextAnalytics);
       } catch (e: any) {
         setError(e?.message || 'Failed to load analytics');
       } finally {

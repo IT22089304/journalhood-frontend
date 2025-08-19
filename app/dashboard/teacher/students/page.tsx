@@ -77,11 +77,6 @@ export default function TeacherStudentsPage() {
       sortable: true,
     },
     {
-      key: "status",
-      label: "Status",
-      sortable: true,
-    },
-    {
       key: "journalEntries",
       label: "Journal Entries",
       sortable: true,
