@@ -675,9 +675,9 @@ export const analyticsApi = {
     return api.get('/api/super-admin/mental-health/flagged-students', token);
   },
 
-  // Get teacher analytics (Teacher only)
-  async getTeacherAnalytics(token?: string): Promise<ApiResponseType<AnalyzedData>> {
-    return api.get('/api/teachers/analytics', token);
+  // Get teacher class analytics (Teacher only)
+  async getTeacherClassAnalytics(token?: string): Promise<ApiResponseType<AnalyzedData>> {
+    return api.get('/api/teachers/analytics/class', token);
   },
 
   // Get school analytics (Super Admin only)

@@ -51,7 +51,7 @@ import { useAuth } from "@/lib/firebase/auth-context"
 import { useToast } from "@/components/ui/use-toast"
 import { schoolAdminResourceApi } from "@/lib/api"
 import { Resource } from "@/lib/types"
-import { analyticsApi } from "@/lib/api";
+// import { analyticsApi } from "@/lib/api";
 
 const navigation = [
   { title: "Classes", url: "/dashboard/school-admin/classes", icon: SchoolIcon },
@@ -195,29 +195,13 @@ export default function SchoolAdminResourcesPage() {
   const [assigningResource, setAssigningResource] = useState(false)
   const [activeCategory, setActiveCategory] = useState<"depression" | "bullying" | "introvert" | "language_problem">("depression")
 
-  // Flagged students state
-  const [flaggedStudents, setFlaggedStudents] = useState<any[]>([]);
-  const [flaggedSummary, setFlaggedSummary] = useState<any>({});
-  const [flaggedLoading, setFlaggedLoading] = useState(true);
-  const [flaggedError, setFlaggedError] = useState<string | null>(null);
+  // Removed flagged students table per request
 
 
   // Load initial data
   useEffect(() => {
     if (token) {
       loadData()
-      // Fetch flagged students
-      setFlaggedLoading(true);
-      analyticsApi.getSchoolFlaggedStudents(token)
-        .then((res: any) => {
-          setFlaggedStudents(res.data.flaggedStudents || []);
-          setFlaggedSummary(res.data.summary || {});
-          setFlaggedLoading(false);
-        })
-        .catch((err: any) => {
-          setFlaggedError("Failed to load flagged students");
-          setFlaggedLoading(false);
-        });
     }
   }, [token])
 
@@ -393,61 +377,7 @@ export default function SchoolAdminResourcesPage() {
           })}
         </div>
 
-        {/* Flagged Students Table */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Flagged Students</CardTitle>
-            <CardDescription>
-              Students in your school flagged for mental health issues
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {flaggedLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading flagged students...</div>
-            ) : flaggedError ? (
-              <div className="text-center py-8 text-red-500">{flaggedError}</div>
-            ) : flaggedStudents.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No flagged students found.</div>
-            ) : (
-              <DataTable
-                data={flaggedStudents}
-                columns={[
-                  {
-                    key: "studentName",
-                    label: "Student Name",
-                    render: (value: string, student: any) => (
-                      <div>
-                        <div className="font-medium">{value}</div>
-                        <div className="text-sm text-gray-500">{student.studentEmail}</div>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "issueType",
-                    label: "Issue Type",
-                    render: (value: string) => (
-                      <span className="capitalize">{value.replace('_', ' ')}</span>
-                    ),
-                  },
-                  {
-                    key: "flagCount",
-                    label: "Flag Count",
-                  },
-                  {
-                    key: "dateFirstFlagged",
-                    label: "First Flagged",
-                  },
-                  {
-                    key: "dateLastFlagged",
-                    label: "Last Flagged",
-                  },
-                ]}
-                searchPlaceholder="Search flagged students..."
-                isLoading={flaggedLoading}
-              />
-            )}
-          </CardContent>
-        </Card>
+        {/* Flagged Students Table removed */}
 
 
 
